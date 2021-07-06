@@ -1,0 +1,11 @@
+{
+  "src": "<url to the .zip file created by the release script>",
+  "name": "My VFX",
+  "raw_name": "score-addon-my-vfx",
+  "version": "1.0",
+  "kind": "addon",
+  "short": "Test VFX add-on",
+  "long": "This addon provides an example VFX",
+  "small": "https://raw.githubusercontent.com/OSSIA/score-addon-tutorial/master/Deployment/icon.png",
+  "key": "e86c697c-cf29-4861-81a3-3a3eed0caf02"
+}
