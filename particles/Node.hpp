@@ -3,6 +3,13 @@
 #include <Gfx/Graph/RenderList.hpp>
 #include <Gfx/Graph/CommonUBOs.hpp>
 
+#include "Loadmesh.h"
+
+#ifndef LOADMESH_H
+#define LOADMESH_H
+#include "tiny_obj_loader.h"
+#endif
+
 namespace particles
 {
 class Renderer;

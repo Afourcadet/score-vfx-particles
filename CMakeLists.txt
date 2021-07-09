@@ -24,6 +24,8 @@ add_library(score_addon_particles
   particles/Process.cpp
   particles/Node.hpp
   particles/Node.cpp
+  particles/Loadmesh.h
+  particles/Loadmesh.cpp
 
   score_addon_particles.hpp
   score_addon_particles.cpp
