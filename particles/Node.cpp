@@ -35,14 +35,14 @@ namespace particles
 /** Here we define a mesh fairly manually and in a fairly suboptimal way
  * (based on this: https://pastebin.com/DXKEmvap)
  */
-const int instances = 1000;
-struct TexturedMesh final : score::gfx::Mesh
+const int instances = 4;
+struct TexturedMeshForParticles final : score::gfx::Mesh
 {
     // Generate our mesh data
     struct data myData = getmesh();
     const std::vector<float> mesh = myData.values;
 
-    explicit TexturedMesh()
+    explicit TexturedMeshForParticles()
     {
       // Our mesh's attribute data is not interleaved, thus
       // we have multiple bindings stored in the same buffer:
@@ -55,21 +55,21 @@ struct TexturedMesh final : score::gfx::Mesh
       // * vertex 1's data in this attribute will start at 3 * sizeof(float)
       // * vertex 2's data in this attribute will start at 6 * sizeof(float)
       // (basically that every vertex position is one after each other).
-      vertexInputBindings.push_back({3 * sizeof(float)});
+      vertexInputBindings.push_back({3 * sizeof(float), QRhiVertexInputBinding::PerVertex});
       vertexAttributeBindings.push_back(
           {0, 0, QRhiVertexInputAttribute::Float3, 0});
 
       // Texcoord
       // Each `in vec2 texcoord;` in the fragment shader will be an [ u v ] element
-      vertexInputBindings.push_back({2 * sizeof(float)});
+      vertexInputBindings.push_back({2 * sizeof(float), QRhiVertexInputBinding::PerVertex});
       vertexAttributeBindings.push_back(
           {1, 1, QRhiVertexInputAttribute::Float2, 0});
       // These variables are used by score to upload the texture
       // and send the draw call automatically
 
-      /*vertexInputBindings.push_back({3 * sizeof(float)});
+      vertexInputBindings.push_back({3 * sizeof(float), QRhiVertexInputBinding::PerInstance});
       vertexAttributeBindings.push_back(
-          {2, 2, QRhiVertexInputAttribute::Float3, 0});*/
+          {2, 2, QRhiVertexInputAttribute::Float3, 0});
 
       vertexArray = mesh;
       vertexCount = myData.vertices_length / 3;
@@ -97,9 +97,9 @@ struct TexturedMesh final : score::gfx::Mesh
     }
 
   // Utility singleton
-  static const TexturedMesh& instance() noexcept
+  static const TexturedMeshForParticles& instance() noexcept
   {
-    static const TexturedMesh newmesh;
+    static const TexturedMeshForParticles newmesh;
     return newmesh;
   }
 
@@ -116,11 +116,10 @@ struct TexturedMesh final : score::gfx::Mesh
   {
     const QRhiCommandBuffer::VertexInput bindings[] = {
         {&vtxData, 0},                      // vertex starts at offset zero
-        {&vtxData, myData.vertices_length * sizeof(float)}, // texcoord starts after all the vertices
-        {&vtxData, (myData.vertices_length * sizeof(float) * 5)/3}
+        {&vtxData, myData.vertices_length * sizeof(float)} // texcoord starts after all the vertices
     };
 
-    cb.setVertexInput(0, 3, bindings);
+    cb.setVertexInput(0, 2, bindings);
   }
 };
 
@@ -265,6 +264,7 @@ private:
     QRhiVertexInputLayout inputLayout;
     inputLayout.setBindings(
         mesh.vertexInputBindings.begin(), mesh.vertexInputBindings.end());
+
     inputLayout.setAttributes(
         mesh.vertexAttributeBindings.begin(),
         mesh.vertexAttributeBindings.end());
@@ -284,11 +284,11 @@ private:
   void init(score::gfx::RenderList& renderer) override
   {
     std::cout << "started init renderer\n";
-    const auto& mesh = TexturedMesh::instance();
+    const auto& mesh = TexturedMeshForParticles::instance();
 
     QRhiBuffer* particleOffsets = renderer.state.rhi->newBuffer(
           QRhiBuffer::Immutable, QRhiBuffer::VertexBuffer | QRhiBuffer::StorageBuffer, instances * 3 * sizeof(float));
-    SCORE_ASSERT(particleOffsets->build());
+    SCORE_ASSERT(particleOffsets->create());
     /*particleSpeeds = rhi.newBuffer(
           QRhiBuffer::Immutable, QRhiBuffer::StorageBuffer, instances * 2 * sizeof(float));
     SCORE_ASSERT(particleSpeeds->build());*/
@@ -298,6 +298,7 @@ private:
       auto [mbuffer, ibuffer] = renderer.initMeshBuffer(mesh);
       m_meshBuffer = mbuffer;
       m_idxBuffer = ibuffer;
+      m_particleOffset = particleOffsets;
     }
 
     // Initialize the Process UBO (provides timing information, etc.)
@@ -403,6 +404,10 @@ private:
     res.updateDynamicBuffer(
         m_processUBO, 0, sizeof(score::gfx::ProcessUBO), &this->node.standardUBO);
 
+    float positions[12] = {50, 50, 0, 100, -10, 70 , -50, 80, -50, -100, -100, -100};
+    res.uploadStaticBuffer(
+        m_particleOffset, 0, 12*sizeof(float), positions);
+
     // If images haven't been uploaded yet, upload them.
     if (!m_uploaded)
     {
@@ -417,67 +422,7 @@ private:
       QRhiCommandBuffer& cb,
       score::gfx::Edge& edge) override
   {
-      // Update a first time everything
-
-      // PASSINDEX must be set to the last index
-      // FIXME
-      /*n.standardUBO.passIndex = m_p.size() - 1;
-
-      update(renderer, res);
-
-      auto updateBatch = &res;
-
-      // Draw the passes
-      const auto& pass = m_p[0];
-      {
-        edge = *pass.first;
-        SCORE_ASSERT(renderer.renderTargetForOutput(edge).renderTarget);
-        SCORE_ASSERT(pass.second.pipeline);
-        SCORE_ASSERT(pass.second.srb);
-        // TODO : combine all the uniforms..
-
-        //auto rt = pass.renderTarget.renderTarget;
-        auto rt = renderer.renderTargetForOutput(edge).renderTarget;
-        //auto pipeline = pass.p.pipeline;
-        auto pipeline = pass.second.pipeline;
-        auto srb = pass.second.srb;
-        auto texture = m_texture;
-
-        const auto& mesh = TexturedMesh::instance();
-
-        cb.beginPass(rt, Qt::black, {1.0f, 0});
-        {
-          cb.setGraphicsPipeline(pipeline);
-          cb.setShaderResources(srb);
-
-          if(texture)
-          {
-            cb.setViewport(QRhiViewport(0, 0, texture->pixelSize().width(), texture->pixelSize().height()));
-          }
-          else
-          {
-            const auto sz = renderer.state.size;
-            cb.setViewport(QRhiViewport(0, 0, sz.width(), sz.height()));
-          }
-
-          assert(this->m_meshBuffer);
-          assert(this->m_meshBuffer->usage().testFlag(QRhiBuffer::VertexBuffer));
-
-          const QRhiCommandBuffer::VertexInput bindings[]
-              = {
-            {this->m_meshBuffer, 0},
-            {this->m_particleOffset, 0}
-          };
-
-          cb.setVertexInput(0, 1, bindings, this->m_idxBuffer, 0, QRhiCommandBuffer::IndexFormat::IndexUInt32);
-
-          cb.drawIndexed(mesh.indexCount, instances);
-        }
-        cb.endPass();
-      }
-    return nullptr;*/
-
-    const auto& mesh = TexturedMesh::instance();
+    const auto& mesh = TexturedMeshForParticles::instance();
     auto it = ossia::find_if(m_p, [ptr=&edge] (const auto& p){ return p.first == ptr; });
     SCORE_ASSERT(it != m_p.end());
     {
@@ -492,17 +437,18 @@ private:
       const QRhiCommandBuffer::VertexInput bindings[]
           = {
         {this->m_meshBuffer, 0},
+        {this->m_meshBuffer, mesh.vertexCount*sizeof(float)},
         {this->m_particleOffset, 0}
       };
 
-      cb.setVertexInput(0, 1, bindings, this->m_idxBuffer, 0, QRhiCommandBuffer::IndexFormat::IndexUInt32);
+      cb.setVertexInput(0, 3, bindings, this->m_idxBuffer, 0, QRhiCommandBuffer::IndexFormat::IndexUInt32);
 
       mesh.setupBindings(*this->m_meshBuffer, this->m_idxBuffer, cb);
 
       if(this->m_idxBuffer)
-        cb.drawIndexed(mesh.indexCount, instances);
+        cb.drawIndexed(mesh.indexCount, instances, 0, mesh.indexCount * 3 * sizeof(float));
       else
-        cb.draw(mesh.vertexCount, instances);
+        cb.draw(mesh.vertexCount, instances, 0, mesh.indexCount * 3 * sizeof(float));
     }
     return nullptr;
   }
