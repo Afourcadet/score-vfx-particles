@@ -421,26 +421,26 @@ private:
 
       // PASSINDEX must be set to the last index
       // FIXME
-      /*n.standardUBO.passIndex = m_passes.size() - 1;
+      /*n.standardUBO.passIndex = m_p.size() - 1;
 
       update(renderer, res);
 
       auto updateBatch = &res;
 
       // Draw the passes
-      const auto& pass = m_passes[0];*/
+      const auto& pass = m_p[0];
       {
-        edge = *m_p.back().first;
+        edge = *pass.first;
         SCORE_ASSERT(renderer.renderTargetForOutput(edge).renderTarget);
-        SCORE_ASSERT(m_p.back().second.pipeline);
-        SCORE_ASSERT(m_p.back().second.srb);
+        SCORE_ASSERT(pass.second.pipeline);
+        SCORE_ASSERT(pass.second.srb);
         // TODO : combine all the uniforms..
 
         //auto rt = pass.renderTarget.renderTarget;
         auto rt = renderer.renderTargetForOutput(edge).renderTarget;
         //auto pipeline = pass.p.pipeline;
-        auto pipeline = m_p.back().second.pipeline;
-        auto srb = m_p.back().second.srb;
+        auto pipeline = pass.second.pipeline;
+        auto srb = pass.second.srb;
         auto texture = m_texture;
 
         const auto& mesh = TexturedMesh::instance();
@@ -475,10 +475,36 @@ private:
         }
         cb.endPass();
       }
-    return nullptr;
-    /*const auto& mesh = TexturedMesh::instance();
-    defaultRenderPass(renderer, mesh, cb, edge);
     return nullptr;*/
+
+    const auto& mesh = TexturedMesh::instance();
+    auto it = ossia::find_if(m_p, [ptr=&edge] (const auto& p){ return p.first == ptr; });
+    SCORE_ASSERT(it != m_p.end());
+    {
+      const auto sz = renderer.state.size;
+      cb.setGraphicsPipeline(it->second.pipeline);
+      cb.setShaderResources(it->second.srb);
+      cb.setViewport(QRhiViewport(0, 0, sz.width(), sz.height()));
+
+      assert(this->m_meshBuffer);
+      assert(this->m_meshBuffer->usage().testFlag(QRhiBuffer::VertexBuffer));
+
+      const QRhiCommandBuffer::VertexInput bindings[]
+          = {
+        {this->m_meshBuffer, 0},
+        {this->m_particleOffset, 0}
+      };
+
+      cb.setVertexInput(0, 1, bindings, this->m_idxBuffer, 0, QRhiCommandBuffer::IndexFormat::IndexUInt32);
+
+      mesh.setupBindings(*this->m_meshBuffer, this->m_idxBuffer, cb);
+
+      if(this->m_idxBuffer)
+        cb.drawIndexed(mesh.indexCount, instances);
+      else
+        cb.draw(mesh.vertexCount, instances);
+    }
+    return nullptr;
   }
 
   // Free resources allocated in this class
