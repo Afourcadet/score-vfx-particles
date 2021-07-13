@@ -35,7 +35,7 @@ namespace particles
 /** Here we define a mesh fairly manually and in a fairly suboptimal way
  * (based on this: https://pastebin.com/DXKEmvap)
  */
-const int instances = 4;
+const int instances = 1000;
 struct TexturedMeshForParticles final : score::gfx::Mesh
 {
     // Generate our mesh data
@@ -430,7 +430,7 @@ private:
 
                 // Our object rotates in a very crude way
                 QMatrix4x4 model;
-                model.scale(0.005);
+                model.scale(0.01);
                 model.rotate(m_rotationCount++, QVector3D(1, 1, 1));
 
                 // The camera and viewports are fixed
@@ -464,8 +464,8 @@ private:
                         m_particleOffsets, 0, 12*sizeof(float), positions);*/
             if(!particlesUploaded) {
                 for(int i = 0; i < instances * 3; i++) {
-                    data[i] = 2 * double(rand()) / RAND_MAX - 1;
-                    speed[i] = (2 * double(rand()) / RAND_MAX - 1) * 0.001;
+                    data[i] = 50 * double(rand()) / RAND_MAX - 1;
+                    speed[i] = (50 * double(rand()) / RAND_MAX - 1) * 0.001;
                 }
 
                 res.uploadStaticBuffer(particleOffsets, 0, instances * 3 * sizeof(float), data);
@@ -481,6 +481,22 @@ private:
             }
         }
 
+        void runInitialPasses(
+              score::gfx::RenderList& renderer,
+              QRhiCommandBuffer& cb,
+              QRhiResourceUpdateBatch*& res,
+              score::gfx::Edge& edge) override
+        {
+            if(compute)
+            {
+                cb.beginComputePass(nullptr);
+                cb.setComputePipeline(compute);
+                cb.setShaderResources(compute->shaderResourceBindings());
+                cb.dispatch(instances / 256, 1, 1);
+                cb.endComputePass();
+            }
+        }
+
         // Everything is set up, we can render our mesh
         QRhiResourceUpdateBatch* runRenderPass(
                     score::gfx::RenderList& renderer,
@@ -489,19 +505,8 @@ private:
         {
             const auto& mesh = TexturedMeshForParticles::instance();
             auto it = ossia::find_if(m_p, [ptr=&edge] (const auto& p){ return p.first == ptr; });
-            auto rt = renderer.renderTargetForOutput(edge);
             SCORE_ASSERT(it != m_p.end());
             {
-                if(compute)
-                      {
-                        cb.beginComputePass(nullptr);
-                        cb.setComputePipeline(compute);
-                        cb.setShaderResources(compute->shaderResourceBindings());
-                        cb.dispatch(instances / 256, 1, 1);
-                        cb.endComputePass();
-                      }
-                cb.beginPass(rt.renderTarget, Qt::black, {1.0f, 0});
-                      {
                 const auto sz = renderer.state.size;
                 cb.setGraphicsPipeline(it->second.pipeline);
                 cb.setShaderResources(it->second.srb);
@@ -526,8 +531,6 @@ private:
                     cb.drawIndexed(mesh.indexCount, instances, 0, mesh.indexCount * 3 * sizeof(float));
                 else
                     cb.draw(mesh.vertexCount, instances, 0, mesh.indexCount * 3 * sizeof(float));
-                }
-                cb.endPass();
             }
             return nullptr;
         }
