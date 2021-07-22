@@ -24,9 +24,6 @@ struct data getmesh()
     }
 
     struct data d = attrib_to_data(reader, inputfile, reader_config);
-
-    //std::cout << "data vertices length : " << d.vertices_length << "\n" ;
-
     return d;
 }
 
@@ -35,7 +32,7 @@ namespace particles
 /** Here we define a mesh fairly manually and in a fairly suboptimal way
  * (based on this: https://pastebin.com/DXKEmvap)
  */
-const int instances = 1000;
+const int instances = 100;
 struct TexturedMeshForParticles final : score::gfx::Mesh
 {
     // Generate our mesh data
@@ -67,9 +64,9 @@ struct TexturedMeshForParticles final : score::gfx::Mesh
         // These variables are used by score to upload the texture
         // and send the draw call automatically
 
-        vertexInputBindings.push_back({3 * sizeof(float), QRhiVertexInputBinding::PerInstance});
+        vertexInputBindings.push_back({4 * sizeof(float), QRhiVertexInputBinding::PerInstance});
         vertexAttributeBindings.push_back(
-                    {2, 2, QRhiVertexInputAttribute::Float3, 0});
+                    {2, 2, QRhiVertexInputAttribute::Float4, 0});
 
         vertexArray = mesh;
         vertexCount = myData.vertices_length / 3;
@@ -127,7 +124,7 @@ struct TexturedMeshForParticles final : score::gfx::Mesh
 static const constexpr auto vertex_shader = R"_(#version 450
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec2 texcoord;
-layout(location = 2) in vec3 offset;
+layout(location = 2) in vec4 offset;
 
 layout(location = 1) out vec2 v_texcoord;
 layout(binding = 3) uniform sampler2D y_tex;
@@ -152,7 +149,7 @@ out gl_PerVertex { vec4 gl_Position; };
 void main()
 {
   v_texcoord = vec2(texcoord.x, texcoordAdjust.y + texcoordAdjust.x * texcoord.y);
-  gl_Position = clipSpaceCorrMatrix * matrixModelViewProjection * vec4(position + offset, 1.0);
+  gl_Position = clipSpaceCorrMatrix * matrixModelViewProjection * vec4(position + offset.xyz, 1.0);
 }
 )_";
 
@@ -191,7 +188,9 @@ Node::Node()
             = score::gfx::makeShaders(vertex_shader, fragment_shader);
     SCORE_ASSERT(m_vertexS.isValid());
     SCORE_ASSERT(m_fragmentS.isValid());
-
+    // Create an input port
+    input.push_back(
+                new score::gfx::Port{this, {}, score::gfx::Types::Audio, {}});
     // Create an output port to indicate that this node
     // draws something
     output.push_back(
@@ -285,18 +284,18 @@ private:
     bool particlesUploaded{};
     QRhiComputePipeline* compute{};
 
-    float data[instances * 3];
-    float speed[instances * 3];
+    float data[instances * 4];
+    float speed[instances * 4];
     void init(score::gfx::RenderList& renderer) override
     {
         std::cout << "started init renderer\n";
         const auto& mesh = TexturedMeshForParticles::instance();
 
         particleOffsets = renderer.state.rhi->newBuffer(
-                    QRhiBuffer::Immutable, QRhiBuffer::VertexBuffer | QRhiBuffer::StorageBuffer, instances * 3 * sizeof(float));
+                    QRhiBuffer::Immutable, QRhiBuffer::VertexBuffer | QRhiBuffer::StorageBuffer, instances * 4 * sizeof(float));
         SCORE_ASSERT(particleOffsets->create());
         particleSpeeds = renderer.state.rhi->newBuffer(
-          QRhiBuffer::Immutable, QRhiBuffer::StorageBuffer, instances * 3 * sizeof(float));
+          QRhiBuffer::Immutable, QRhiBuffer::StorageBuffer, instances * 4 * sizeof(float));
     SCORE_ASSERT(particleSpeeds->build());
 
         // Load the mesh data into the GPU
@@ -372,11 +371,11 @@ private:
     layout (local_size_x = 256) in;
     struct Pos
     {
-        vec3 pos;
+        vec4 pos;
     };
     struct Speed
     {
-        vec3 spd;
+        vec4 spd;
     };
     layout(std140, binding = 0) buffer PBuf
     {
@@ -388,12 +387,15 @@ private:
     } sbuf;
     void main()
     {
+        vec4 cs = vec4(0, -0.001, 0, 0);
         uint index = gl_GlobalInvocationID.x;
         if (index < %1) {
-            vec3 p = pbuf.d[index].pos;
-            vec3 s = sbuf.d[index].spd;
+            vec4 p = pbuf.d[index].pos;
+            vec4 s = sbuf.d[index].spd;
+            s += cs;
             p += s;
             pbuf.d[index].pos = p;
+            sbuf.d[index].spd = s;
         }
     }
     )_").arg(instances);
@@ -430,8 +432,8 @@ private:
 
                 // Our object rotates in a very crude way
                 QMatrix4x4 model;
-                model.scale(0.01);
-                model.rotate(m_rotationCount++, QVector3D(1, 1, 1));
+                model.scale(0.005);
+                //model.rotate(m_rotationCount++, QVector3D(1, 1, 1));
 
                 // The camera and viewports are fixed
                 QMatrix4x4 view;
@@ -459,17 +461,14 @@ private:
             res.updateDynamicBuffer(
                         m_processUBO, 0, sizeof(score::gfx::ProcessUBO), &this->node.standardUBO);
 
-            /*float positions[12] = {50, 50, 0, 100, -10, 70 , -50, 80, -50, -100, -100, -100};
-            res.uploadStaticBuffer(
-                        m_particleOffsets, 0, 12*sizeof(float), positions);*/
             if(!particlesUploaded) {
-                for(int i = 0; i < instances * 3; i++) {
+                for(int i = 0; i < instances * 4; i++) {
                     data[i] = 50 * double(rand()) / RAND_MAX - 1;
-                    speed[i] = (50 * double(rand()) / RAND_MAX - 1) * 0.001;
+                    speed[i] = (50 * double(rand()) / RAND_MAX - 1) * 0.01;
                 }
 
-                res.uploadStaticBuffer(particleOffsets, 0, instances * 3 * sizeof(float), data);
-                res.uploadStaticBuffer(particleSpeeds, 0, instances * 3 * sizeof(float), speed);
+                res.uploadStaticBuffer(particleOffsets, 0, instances * 4 * sizeof(float), data);
+                res.uploadStaticBuffer(particleSpeeds, 0, instances * 4 * sizeof(float), speed);
                 particlesUploaded = true;
             }
 
@@ -492,7 +491,7 @@ private:
                 cb.beginComputePass(nullptr);
                 cb.setComputePipeline(compute);
                 cb.setShaderResources(compute->shaderResourceBindings());
-                cb.dispatch(instances / 256, 1, 1);
+                cb.dispatch(std::max(1, instances / 256), 1, 1);
                 cb.endComputePass();
             }
         }
