@@ -3,7 +3,7 @@
 
 
 
-struct data attrib_to_data(tinyobj::ObjReader reader, std::string inputfile, tinyobj::ObjReaderConfig reader_config){
+struct meshdata attrib_to_data(tinyobj::ObjReader reader, std::string inputfile, tinyobj::ObjReaderConfig reader_config){
     if (!reader.ParseFromFile(inputfile, reader_config)) {
       if (!reader.Error().empty()) {
           std::cerr << "TinyObjReader: " << reader.Error();
@@ -92,7 +92,30 @@ struct data attrib_to_data(tinyobj::ObjReader reader, std::string inputfile, tin
       }
     }
 
-    struct data d = {val, vertices_length, texture_length};
+    struct meshdata d = {val, vertices_length, texture_length};
 
+    return d;
+}
+
+struct meshdata getmesh()
+{
+    std::string inputfile = "ponte.obj";
+    tinyobj::ObjReaderConfig reader_config;
+    reader_config.mtl_search_path = "./"; // Path to material files
+
+    tinyobj::ObjReader reader;
+
+    if (!reader.ParseFromFile(inputfile, reader_config)) {
+        if (!reader.Error().empty()) {
+            std::cerr << "TinyObjReader: " << reader.Error();
+        }
+        exit(1);
+    }
+
+    if (!reader.Warning().empty()) {
+        std::cout << "TinyObjReader: " << reader.Warning();
+    }
+
+    struct meshdata d = attrib_to_data(reader, inputfile, reader_config);
     return d;
 }

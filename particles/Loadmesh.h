@@ -4,12 +4,13 @@
 #include <iostream>
 #include <QApplication>
 
-struct data{
+struct meshdata{
     std::vector<float> values;
     unsigned long vertices_length;
     unsigned long texture_length;
 };
 
-struct data attrib_to_data(tinyobj::ObjReader reader, std::string inputfile, tinyobj::ObjReaderConfig reader_config);
+struct meshdata attrib_to_data(tinyobj::ObjReader reader, std::string inputfile, tinyobj::ObjReaderConfig reader_config);
+struct meshdata getmesh();
 
 #endif // LOADMESH_H
