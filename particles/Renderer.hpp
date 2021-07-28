@@ -13,6 +13,7 @@ public:
     using GenericNodeRenderer::GenericNodeRenderer;
     QRhiBuffer* m_particleOffsets{};
     QRhiBuffer* m_particleSpeeds{};
+    QRhiBuffer* m_particleSpeedMod{};
 
 private:
     ~Renderer();
@@ -32,6 +33,7 @@ private:
             QRhiShaderResourceBindings* srb);
     QRhiBuffer* particleOffsets{};
     QRhiBuffer* particleSpeeds{};
+    QRhiBuffer* particleSpeedModifier{};
     bool particlesUploaded{};
     QRhiComputePipeline* compute{};
     QRhiTexture* m_texture{};
