@@ -19,7 +19,7 @@ namespace particles
         metadata().setInstanceName(*this);
         {
             auto speedModifier = new Process::IntSlider{Id<Process::Port>(2), this};
-            speedModifier->setName(tr("Point size"));
+            speedModifier->setName(tr("Speed Modifier"));
             speedModifier->setValue(28.);
             speedModifier->setDomain(ossia::make_domain(1.f, 300.f));
             m_inlets.push_back(speedModifier);
