@@ -18,11 +18,11 @@ namespace particles
     {
         metadata().setInstanceName(*this);
         {
-            auto pointSize = new Process::IntSlider{Id<Process::Port>(2), this};
-            pointSize->setName(tr("Point size"));
-            pointSize->setValue(28.);
-            pointSize->setDomain(ossia::make_domain(1.f, 300.f));
-            m_inlets.push_back(pointSize);
+            auto speedModifier = new Process::IntSlider{Id<Process::Port>(2), this};
+            speedModifier->setName(tr("Point size"));
+            speedModifier->setValue(28.);
+            speedModifier->setDomain(ossia::make_domain(1.f, 300.f));
+            m_inlets.push_back(speedModifier);
         }
         m_outlets.push_back(new Gfx::TextureOutlet{Id<Process::Port>(0), this});
     }
@@ -31,7 +31,7 @@ namespace particles
 
     QString Model::prettyName() const noexcept
     {
-        return tr("My VFX");
+        return tr("Particles");
     }
 
 }

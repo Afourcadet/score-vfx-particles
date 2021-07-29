@@ -7,6 +7,11 @@ namespace particles
 #include <Gfx/Qt5CompatPush> // clang-format: keep
 const int instances = 100;
 
+struct Controls
+{
+    float speedMod;
+};
+
 class Renderer : public score::gfx::GenericNodeRenderer
 {
 public:

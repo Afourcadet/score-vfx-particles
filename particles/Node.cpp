@@ -107,7 +107,7 @@ void Node::process(const score::gfx::Message& msg)
       {
         // Speed of particles
         {
-          font = ossia::convert<float>(*val);
+          particlesSpeedMod = 0.01*ossia::convert<float>(*val);
           mustRerender = true;
         }
         break;

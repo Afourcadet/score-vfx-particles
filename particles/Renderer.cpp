@@ -82,7 +82,7 @@ void Renderer::init(score::gfx::RenderList& renderer)
                 QRhiBuffer::Immutable, QRhiBuffer::StorageBuffer, instances * 4 * sizeof(float));
     SCORE_ASSERT(particleSpeeds->create());
     particleSpeedModifier = renderer.state.rhi->newBuffer(
-                QRhiBuffer::Immutable, QRhiBuffer::UniformBuffer, sizeof(float));
+                QRhiBuffer::Immutable, QRhiBuffer::UniformBuffer, sizeof(Controls));
     SCORE_ASSERT(particleSpeedModifier->create());
 
     // Load the mesh data into the GPU
@@ -165,6 +165,10 @@ void Renderer::init(score::gfx::RenderList& renderer)
     {
         vec4 spd;
     };
+    struct Ctrl
+    {
+        float speedMod;
+    };
     layout(std140, binding = 0) buffer PBuf
     {
         Pos d[];
@@ -173,10 +177,10 @@ void Renderer::init(score::gfx::RenderList& renderer)
     {
         Speed d[];
     } sbuf;
-    layout(std140, binding = 2) uniform SMod
+    layout(std140, binding = 2) uniform Controls
     {
-        float value;
-    } smod;
+        Ctrl c;
+    } controls;
     void main()
     {
         vec4 cs = vec4(0, -0.001, 0, 0);
@@ -185,9 +189,7 @@ void Renderer::init(score::gfx::RenderList& renderer)
             vec4 p = pbuf.d[index].pos;
             vec4 s = sbuf.d[index].spd;
             s += cs;
-            vec4 ns = smod.value*0.01*s;
-
-
+            vec4 ns = controls.c.speedMod*s;
             p += ns;
             pbuf.d[index].pos = p;
             sbuf.d[index].spd = s;
@@ -266,7 +268,7 @@ void Renderer::init(score::gfx::RenderList& renderer)
             particlesUploaded = true;
         }
 
-        res.uploadStaticBuffer(particleSpeedModifier, 0, sizeof(float), &n.font);
+        res.uploadStaticBuffer(particleSpeedModifier, 0, sizeof(float), &n.particlesSpeedMod);
 
         // If images haven't been uploaded yet, upload them.
         if (!m_uploaded)
