@@ -4,7 +4,9 @@
 #include <Gfx/GfxContext.hpp>
 #include <Gfx/GfxExec.hpp>
 #include <Gfx/Graph/PhongNode.hpp>
+#include <Gfx/Graph/TextNode.hpp>
 #include <Gfx/TexturePort.hpp>
+#include <Gfx/Text/Process.hpp>
 #include <Process/Dataflow/Port.hpp>
 #include <Process/ExecutionContext.hpp>
 
@@ -14,6 +16,7 @@
 
 #include <particles/Node.hpp>
 #include <particles/Process.hpp>
+
 namespace particles
 {
 class mesh_node final : public Gfx::gfx_exec_node
@@ -44,7 +47,19 @@ ProcessExecutorComponent::ProcessExecutorComponent(
   {
     auto n = std::make_shared<mesh_node>(
         ctx.doc.plugin<Gfx::DocumentPlugin>().exec);
+    for (std::size_t i = 0; i < 1; i++)
+    {
+      auto ctrl = qobject_cast<Process::ControlInlet*>(element.inlets()[i]);
+      auto& p = n->add_control();
+      p->value = ctrl->value();
+      p->changed = true;
 
+      QObject::connect(
+                  ctrl,
+                  &Process::ControlInlet::valueChanged,
+                  this,
+                  Gfx::con_unvalidated{ctx, i, 0, n});
+    }
     this->node = n;
     m_ossia_process = std::make_shared<ossia::node_process>(n);
   }
