@@ -66,7 +66,8 @@ Node::Node()
 {
     // This texture is provided by score
     m_image = QImage(":/ossia-score.png");
-
+    particlesSpeedMod = 0.f;
+  
     std::cout << "new_debug";
 
     // Load ubo address in m_materialData
