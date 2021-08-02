@@ -18,11 +18,18 @@ namespace particles
     {
         metadata().setInstanceName(*this);
         {
-            auto speedModifier = new Process::IntSlider{Id<Process::Port>(2), this};
+            auto speedModifier = new Process::FloatSlider{Id<Process::Port>(2), this};
             speedModifier->setName(tr("Speed Modifier"));
             speedModifier->setValue(28.);
             speedModifier->setDomain(ossia::make_domain(1.f, 300.f));
             m_inlets.push_back(speedModifier);
+        }
+        {
+            auto nbrParticles = new Process::IntSlider{Id<Process::Port>(3), this};
+            nbrParticles->setName(tr("Number Of Particles"));
+            nbrParticles->setValue(1+maxparticles/2);
+            nbrParticles->setDomain(ossia::make_domain(1, maxparticles));
+            m_inlets.push_back(nbrParticles);
         }
         m_outlets.push_back(new Gfx::TextureOutlet{Id<Process::Port>(0), this});
     }

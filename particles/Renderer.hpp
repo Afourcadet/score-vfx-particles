@@ -5,8 +5,7 @@
 namespace particles
 {
 #include <Gfx/Qt5CompatPush> // clang-format: keep
-const int instances = 100;
-
+const int maxparticles = 200;
 struct Controls
 {
     float speedMod;
@@ -16,9 +15,10 @@ class Renderer : public score::gfx::GenericNodeRenderer
 {
 public:
     using GenericNodeRenderer::GenericNodeRenderer;
+    int instances = 100;
     QRhiBuffer* m_particleOffsets{};
     QRhiBuffer* m_particleSpeeds{};
-    QRhiBuffer* m_particleSpeedMod{};
+    QRhiBuffer* m_particleControls{};
 
 private:
     ~Renderer();
@@ -38,13 +38,13 @@ private:
             QRhiShaderResourceBindings* srb);
     QRhiBuffer* particleOffsets{};
     QRhiBuffer* particleSpeeds{};
-    QRhiBuffer* particleSpeedModifier{};
+    QRhiBuffer* particleControls{};
     bool particlesUploaded{};
     QRhiComputePipeline* compute{};
     QRhiTexture* m_texture{};
     bool m_uploaded = false;
-    float data[instances * 4];
-    float speed[instances * 4];
+    float *data = (float *)malloc(maxparticles * 4 * sizeof(float));
+    float *speed = (float *)malloc(maxparticles * 4 * sizeof(float));
     void init(score::gfx::RenderList& renderer) override;
     void update(score::gfx::RenderList& renderer, QRhiResourceUpdateBatch& res) override;
     void runInitialPasses(
@@ -52,7 +52,7 @@ private:
                 QRhiCommandBuffer& cb,
                 QRhiResourceUpdateBatch*& res,
                 score::gfx::Edge& edge) override;
-    QRhiResourceUpdateBatch* runRenderPass(
+    void runRenderPass(
                 score::gfx::RenderList& renderer,
                 QRhiCommandBuffer& cb,
                 score::gfx::Edge& edge) override;

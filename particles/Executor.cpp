@@ -2,7 +2,7 @@
 
 #include <Gfx/GfxApplicationPlugin.hpp>
 #include <Gfx/GfxContext.hpp>
-#include <Gfx/GfxExec.hpp>
+
 #include <Gfx/Graph/PhongNode.hpp>
 #include <Gfx/Graph/TextNode.hpp>
 #include <Gfx/TexturePort.hpp>
@@ -47,7 +47,7 @@ ProcessExecutorComponent::ProcessExecutorComponent(
   {
     auto n = std::make_shared<mesh_node>(
         ctx.doc.plugin<Gfx::DocumentPlugin>().exec);
-    for (std::size_t i = 0; i < 1; i++)
+    for (std::size_t i = 0; i < 2; i++)
     {
       auto ctrl = qobject_cast<Process::ControlInlet*>(element.inlets()[i]);
       auto& p = n->add_control();
