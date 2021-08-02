@@ -113,6 +113,15 @@ void Node::process(const score::gfx::Message& msg)
         }
         break;
       }
+      case 1:
+    {
+        // Sumber of particles
+        {
+            particlesNumber = ossia::convert<int>(*val);
+            mustRerender = true;
+        }
+        break;
+    }
     }
     }
     p++;

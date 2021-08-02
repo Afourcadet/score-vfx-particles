@@ -76,14 +76,14 @@ void Renderer::init(score::gfx::RenderList& renderer)
     const auto& mesh = TexturedMeshForParticles::instance();
 
     particleOffsets = renderer.state.rhi->newBuffer(
-                QRhiBuffer::Immutable, QRhiBuffer::VertexBuffer | QRhiBuffer::StorageBuffer, instances * 4 * sizeof(float));
+                QRhiBuffer::Immutable, QRhiBuffer::VertexBuffer | QRhiBuffer::StorageBuffer, maxparticles * 4 * sizeof(float));
     SCORE_ASSERT(particleOffsets->create());
     particleSpeeds = renderer.state.rhi->newBuffer(
-                QRhiBuffer::Immutable, QRhiBuffer::StorageBuffer, instances * 4 * sizeof(float));
+                QRhiBuffer::Immutable, QRhiBuffer::StorageBuffer, maxparticles * 4 * sizeof(float));
     SCORE_ASSERT(particleSpeeds->create());
-    particleSpeedModifier = renderer.state.rhi->newBuffer(
+    particleControls = renderer.state.rhi->newBuffer(
                 QRhiBuffer::Immutable, QRhiBuffer::UniformBuffer, sizeof(Controls));
-    SCORE_ASSERT(particleSpeedModifier->create());
+    SCORE_ASSERT(particleControls->create());
 
     // Load the mesh data into the GPU
     {
@@ -92,7 +92,7 @@ void Renderer::init(score::gfx::RenderList& renderer)
                 m_idxBuffer = ibuffer;
                 m_particleOffsets = particleOffsets;
                 m_particleSpeeds = particleSpeeds;
-                m_particleSpeedMod = particleSpeedModifier;
+                m_particleControls = particleControls;
     }
 
                 // Initialize the Process UBO (provides timing information, etc.)
@@ -195,7 +195,7 @@ void Renderer::init(score::gfx::RenderList& renderer)
             sbuf.d[index].spd = s;
         }
     }
-    )_").arg(instances);
+    )_").arg(maxparticles);
             QShader computeShader = score::gfx::makeCompute(comp);
             compute = rhi.newComputePipeline();
 
@@ -204,7 +204,7 @@ void Renderer::init(score::gfx::RenderList& renderer)
                 QRhiShaderResourceBinding bindings[3] = {
                     QRhiShaderResourceBinding::bufferLoadStore(0, QRhiShaderResourceBinding::ComputeStage, particleOffsets),
                     QRhiShaderResourceBinding::bufferLoadStore(1, QRhiShaderResourceBinding::ComputeStage, particleSpeeds),
-                    QRhiShaderResourceBinding::uniformBuffer(2, QRhiShaderResourceBinding::ComputeStage, particleSpeedModifier)
+                    QRhiShaderResourceBinding::uniformBuffer(2, QRhiShaderResourceBinding::ComputeStage, particleControls)
                 };
 
                 csrb->setBindings(bindings, bindings + 3);
@@ -259,16 +259,19 @@ void Renderer::init(score::gfx::RenderList& renderer)
                     m_processUBO, 0, sizeof(score::gfx::ProcessUBO), &this->node.standardUBO);
 
         if(!particlesUploaded) {
-            for(int i = 0; i < instances * 4; i++) {
+            for(int i = 0; i < maxparticles * 4; i++) {
                 data[i] = 50 * double(rand()) / RAND_MAX - 1;
                 speed[i] = (30 * double(rand()) / RAND_MAX - 1) * 0.01;
             }
-            res.uploadStaticBuffer(particleSpeeds, 0, instances * 4 * sizeof(float), speed);
-            res.uploadStaticBuffer(particleOffsets, 0, instances * 4 * sizeof(float), data);
+            res.uploadStaticBuffer(particleSpeeds, 0, maxparticles * 4 * sizeof(float), speed);
+            res.uploadStaticBuffer(particleOffsets, 0, maxparticles * 4 * sizeof(float), data);
             particlesUploaded = true;
         }
 
-        res.uploadStaticBuffer(particleSpeedModifier, 0, sizeof(float), &n.particlesSpeedMod);
+        res.uploadStaticBuffer(particleControls, 0, sizeof(float), &n.particlesSpeedMod);
+        res.uploadStaticBuffer(particleControls, sizeof(float), sizeof(int), &n.particlesNumber);
+
+        instances = n.particlesNumber;
 
         // If images haven't been uploaded yet, upload them.
         if (!m_uploaded)
@@ -289,13 +292,13 @@ void Renderer::init(score::gfx::RenderList& renderer)
             cb.beginComputePass(nullptr);
             cb.setComputePipeline(compute);
             cb.setShaderResources(compute->shaderResourceBindings());
-            cb.dispatch(std::max(1, instances / 256), 1, 1);
+            cb.dispatch(std::max(1, maxparticles / 256), 1, 1);
             cb.endComputePass();
         }
     }
 
     // Everything is set up, we can render our mesh
-    QRhiResourceUpdateBatch* Renderer::runRenderPass(
+    void Renderer::runRenderPass(
                 score::gfx::RenderList& renderer,
                 QRhiCommandBuffer& cb,
                 score::gfx::Edge& edge)
@@ -318,7 +321,7 @@ void Renderer::init(score::gfx::RenderList& renderer)
                 {this->m_meshBuffer, mesh.vertexCount*sizeof(float)},
                 {this->m_particleOffsets, 0},
                 {this->m_particleSpeeds, 0},
-                {this->m_particleSpeedMod, 0}
+                {this->m_particleControls, 0}
             };
 
             cb.setVertexInput(0, 5, bindings, this->m_idxBuffer, 0, QRhiCommandBuffer::IndexFormat::IndexUInt32);
@@ -330,7 +333,6 @@ void Renderer::init(score::gfx::RenderList& renderer)
             else
                 cb.draw(mesh.vertexCount, instances, 0, mesh.indexCount * 3 * sizeof(float));
         }
-        return nullptr;
     }
 
     // Free resources allocated in this class
@@ -342,8 +344,8 @@ void Renderer::init(score::gfx::RenderList& renderer)
         m_particleOffsets = nullptr;
         m_particleSpeeds->releaseAndDestroyLater();
         m_particleSpeeds = nullptr;
-        m_particleSpeedMod->releaseAndDestroyLater();
-        m_particleSpeedMod = nullptr;
+        m_particleControls->releaseAndDestroyLater();
+        m_particleControls = nullptr;
 
         // This will free all the other resources - material & process UBO, etc
         defaultRelease(r);

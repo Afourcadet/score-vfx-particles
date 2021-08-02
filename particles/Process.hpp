@@ -5,7 +5,7 @@
 #include <Process/Process.hpp>
 
 #include <particles/Metadata.hpp>
-
+#include "Renderer.hpp"
 namespace particles
 {
 class Model final : public Process::ProcessModel
