@@ -263,8 +263,8 @@ void Renderer::init(score::gfx::RenderList& renderer)
                 data[i] = 50 * double(rand()) / RAND_MAX - 1;
                 speed[i] = (30 * double(rand()) / RAND_MAX - 1) * 0.01;
             }
-            res.uploadStaticBuffer(particleSpeeds, 0, maxparticles * 4 * sizeof(float), speed);
-            res.uploadStaticBuffer(particleOffsets, 0, maxparticles * 4 * sizeof(float), data);
+            res.uploadStaticBuffer(particleSpeeds, 0, maxparticles * 4 * sizeof(float), speed.get());
+            res.uploadStaticBuffer(particleOffsets, 0, maxparticles * 4 * sizeof(float), data.get());
             particlesUploaded = true;
         }
 

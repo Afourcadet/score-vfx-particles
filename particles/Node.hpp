@@ -13,8 +13,8 @@ public:
   score::gfx::NodeRenderer*
   createRenderer(score::gfx::RenderList& r) const noexcept override;
   void process(const score::gfx::Message& msg) override;
-  float particlesSpeedMod;
-  int particlesNumber;
+  float particlesSpeedMod = 1.f;
+  int particlesNumber = 0;
   std::atomic_bool mustRerender{true};
 private:
   score::gfx::ModelCameraUBO ubo;

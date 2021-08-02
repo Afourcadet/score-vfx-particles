@@ -43,8 +43,8 @@ private:
     QRhiComputePipeline* compute{};
     QRhiTexture* m_texture{};
     bool m_uploaded = false;
-    float *data = (float *)malloc(maxparticles * 4 * sizeof(float));
-    float *speed = (float *)malloc(maxparticles * 4 * sizeof(float));
+    std::unique_ptr<float []> data = std::make_unique<float[]>(maxparticles *4);
+    std::unique_ptr<float []> speed = std::make_unique<float[]>(maxparticles *4);
     void init(score::gfx::RenderList& renderer) override;
     void update(score::gfx::RenderList& renderer, QRhiResourceUpdateBatch& res) override;
     void runInitialPasses(
