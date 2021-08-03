@@ -72,8 +72,11 @@ score::gfx::Pipeline Renderer::buildPipeline(
 }
 void Renderer::init(score::gfx::RenderList& renderer)
 {
+    auto& n = static_cast<const Node&>(this->node);
+    auto& rhi = *renderer.state.rhi;
+
     std::cout << "started init renderer\n";
-    const auto& mesh = TexturedMeshForParticles::instance();
+    const auto& mesh = TexturedMeshForParticles::instance(n.meshName);
 
     particleOffsets = renderer.state.rhi->newBuffer(
                 QRhiBuffer::Immutable, QRhiBuffer::VertexBuffer | QRhiBuffer::StorageBuffer, maxparticles * 4 * sizeof(float));
@@ -109,9 +112,6 @@ void Renderer::init(score::gfx::RenderList& renderer)
                         sizeof(score::gfx::ModelCameraUBO));
             SCORE_ASSERT(m_material.buffer->create());
         }
-
-        auto& n = static_cast<const Node&>(this->node);
-        auto& rhi = *renderer.state.rhi;
 
         // Create GPU textures for the image
         const QSize sz = n.m_image.size();
@@ -183,11 +183,12 @@ void Renderer::init(score::gfx::RenderList& renderer)
     } controls;
     void main()
     {
-        vec4 cs = vec4(0, -0.001, 0, 0);
+        vec4 cs;
         uint index = gl_GlobalInvocationID.x;
         if (index < %1) {
             vec4 p = pbuf.d[index].pos;
             vec4 s = sbuf.d[index].spd;
+            cs = vec4(-p.x*0.01, -p.y*0.01, -p.z*0.01, 0);
             s += cs;
             vec4 ns = controls.c.speedMod*s;
             p += ns;
@@ -229,7 +230,7 @@ void Renderer::init(score::gfx::RenderList& renderer)
 
             // Our object rotates in a very crude way
             QMatrix4x4 model;
-            model.scale(0.005);
+            model.scale(0.1);
             //model.rotate(m_rotationCount++, QVector3D(1, 1, 1));
 
             // The camera and viewports are fixed
@@ -259,9 +260,14 @@ void Renderer::init(score::gfx::RenderList& renderer)
                     m_processUBO, 0, sizeof(score::gfx::ProcessUBO), &this->node.standardUBO);
 
         if(!particlesUploaded) {
-            for(int i = 0; i < maxparticles * 4; i++) {
-                data[i] = 50 * double(rand()) / RAND_MAX - 1;
-                speed[i] = (30 * double(rand()) / RAND_MAX - 1) * 0.01;
+            for(int i = 0; i < maxparticles * 4; i+=4) {
+                double angle = 2. * (i/4) * M_PI / (double)n.particlesNumber;
+                data[i] = 5*std::cos(angle);
+                data[i+1] = 5*std::sin(M_PI/4.)*std::sin(angle);
+                data[i+2] = 5*std::cos(M_PI/4.)*std::cos(angle);
+                speed[i] = data[i+1];
+                speed[i+1] = -data[i+2];
+                speed[i+2] = -data[i];
             }
             res.uploadStaticBuffer(particleSpeeds, 0, maxparticles * 4 * sizeof(float), speed.get());
             res.uploadStaticBuffer(particleOffsets, 0, maxparticles * 4 * sizeof(float), data.get());
@@ -303,7 +309,8 @@ void Renderer::init(score::gfx::RenderList& renderer)
                 QRhiCommandBuffer& cb,
                 score::gfx::Edge& edge)
     {
-        const auto& mesh = TexturedMeshForParticles::instance();
+        auto& n = static_cast<const Node&>(this->node);
+        const auto& mesh = TexturedMeshForParticles::instance(n.meshName);
         auto it = ossia::find_if(m_p, [ptr=&edge] (const auto& p){ return p.first == ptr; });
         SCORE_ASSERT(it != m_p.end());
         {

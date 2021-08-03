@@ -2,8 +2,11 @@
 
 namespace particles
 {
-TexturedMeshForParticles::TexturedMeshForParticles()
+TexturedMeshForParticles::TexturedMeshForParticles(std::string meshName)
 {
+    myData = getmesh(meshName);
+    mesh = myData.values;
+
     vertexInputBindings.push_back({3 * sizeof(float), QRhiVertexInputBinding::PerVertex});
     vertexAttributeBindings.push_back(
                 {0, 0, QRhiVertexInputAttribute::Float3, 0});
@@ -23,11 +26,12 @@ TexturedMeshForParticles::TexturedMeshForParticles()
     vertexCount = myData.vertices_length / 3;
 }
 
-const TexturedMeshForParticles& TexturedMeshForParticles::instance() noexcept
+const TexturedMeshForParticles& TexturedMeshForParticles::instance(std::string meshName) noexcept
 {
-    static const TexturedMeshForParticles newmesh;
+    static const TexturedMeshForParticles newmesh(meshName);
     return newmesh;
 }
+
 const char* TexturedMeshForParticles::defaultVertexShader() const noexcept { return ""; }
 
 void TexturedMeshForParticles::setupBindings(

@@ -15,6 +15,7 @@ public:
   void process(const score::gfx::Message& msg) override;
   float particlesSpeedMod = 1.f;
   int particlesNumber = 0;
+  std::string meshName = "ponte";
   std::atomic_bool mustRerender{true};
 private:
   score::gfx::ModelCameraUBO ubo;

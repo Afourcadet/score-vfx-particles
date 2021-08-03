@@ -97,9 +97,9 @@ struct meshdata attrib_to_data(tinyobj::ObjReader reader, std::string inputfile,
     return d;
 }
 
-struct meshdata getmesh()
+struct meshdata getmesh(std::string meshName)
 {
-    std::string inputfile = "ponte.obj";
+    std::string inputfile = meshName+".obj";
     tinyobj::ObjReaderConfig reader_config;
     reader_config.mtl_search_path = "./"; // Path to material files
 
