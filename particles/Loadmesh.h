@@ -11,6 +11,6 @@ struct meshdata{
 };
 
 struct meshdata attrib_to_data(tinyobj::ObjReader reader, std::string inputfile, tinyobj::ObjReaderConfig reader_config);
-struct meshdata getmesh();
+struct meshdata getmesh(std::string meshName);
 
 #endif // LOADMESH_H

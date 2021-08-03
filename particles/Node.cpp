@@ -57,8 +57,7 @@ layout(location = 0) out vec4 fragColor;
 void main ()
 {
   fragColor = texture(y_tex, v_texcoord.xy);
-  if(fragColor.a == 0.)
-    fragColor = vec4(1.,1.,1., 1.);
+  fragColor = vec4(fragColor.xyz, 0.7);
 }
 )_";
 
@@ -122,6 +121,13 @@ void Node::process(const score::gfx::Message& msg)
         }
         break;
     }
+    case 2:
+        // Name of the mesh
+        {
+            meshName = ossia::convert<std::string>(*val);
+            mustRerender = true;
+        }
+        break;
     }
     }
     p++;
