@@ -18,7 +18,7 @@ score::gfx::TextureRenderTarget Renderer::renderTargetForInput(const score::gfx:
 // needed by the graphics card when issuing draw calls
 score::gfx::Pipeline Renderer::buildPipeline(
         const score::gfx::RenderList& renderer,
-        const score::gfx::Mesh& mesh,
+        const TexturedMeshForParticles& mesh,
         const QShader& vertexS,
         const QShader& fragmentS,
         const score::gfx::TextureRenderTarget& rt,
@@ -75,12 +75,6 @@ void Renderer::init(score::gfx::RenderList& renderer)
     auto& n = static_cast<const Node&>(this->node);
     auto& rhi = *renderer.state.rhi;
 
-    std::cout << "started init renderer\n";
-    const TexturedMeshForParticles mesh(n.meshName);
-    /*n.mesh.myData = newmesh.myData;
-    n.mesh.mesh = newmesh.mesh;
-    auto& mesh = n.mesh;*/
-
     particleOffsets = renderer.state.rhi->newBuffer(
                 QRhiBuffer::Immutable, QRhiBuffer::VertexBuffer | QRhiBuffer::StorageBuffer, maxparticles * 4 * sizeof(float));
     SCORE_ASSERT(particleOffsets->create());
@@ -88,18 +82,12 @@ void Renderer::init(score::gfx::RenderList& renderer)
                 QRhiBuffer::Immutable, QRhiBuffer::StorageBuffer, maxparticles * 4 * sizeof(float));
     SCORE_ASSERT(particleSpeeds->create());
     particleControls = renderer.state.rhi->newBuffer(
-                QRhiBuffer::Immutable, QRhiBuffer::UniformBuffer, sizeof(Controls));
+                QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(Controls));
     SCORE_ASSERT(particleControls->create());
 
-    // Load the mesh data into the GPU
-    {
-        auto [mbuffer, ibuffer] = renderer.initMeshBuffer(mesh);
-                m_meshBuffer = mbuffer;
-                m_idxBuffer = ibuffer;
-                m_particleOffsets = particleOffsets;
-                m_particleSpeeds = particleSpeeds;
-                m_particleControls = particleControls;
-    }
+    m_particleOffsets = particleOffsets;
+    m_particleSpeeds = particleSpeeds;
+    m_particleControls = particleControls;
 
                 // Initialize the Process UBO (provides timing information, etc.)
         {
@@ -152,7 +140,7 @@ void Renderer::init(score::gfx::RenderList& renderer)
                 auto bindings = createDefaultBindings(
                             renderer, rt, m_processUBO, m_material.buffer, m_samplers);
                 auto pipeline = buildPipeline(
-                            renderer, mesh, n.m_vertexS, n.m_fragmentS, rt, bindings);
+                            renderer, m_mesh, n.m_vertexS, n.m_fragmentS, rt, bindings);
                 m_p.emplace_back(edge, pipeline);
             }
         }
@@ -168,10 +156,6 @@ void Renderer::init(score::gfx::RenderList& renderer)
     {
         vec4 spd;
     };
-    struct Ctrl
-    {
-        float speedMod;
-    };
     layout(std140, binding = 0) buffer PBuf
     {
         Pos d[];
@@ -182,7 +166,7 @@ void Renderer::init(score::gfx::RenderList& renderer)
     } sbuf;
     layout(std140, binding = 2) uniform Controls
     {
-        Ctrl c;
+        float speedMod;
     } controls;
     void main()
     {
@@ -193,7 +177,7 @@ void Renderer::init(score::gfx::RenderList& renderer)
             vec4 s = sbuf.d[index].spd;
             cs = vec4(-p.x*0.01, -p.y*0.01, -p.z*0.01, 0);
             s += cs;
-            vec4 ns = controls.c.speedMod*s;
+            vec4 ns = controls.speedMod*s;
             p += ns;
             pbuf.d[index].pos = p;
             sbuf.d[index].spd = s;
@@ -223,6 +207,7 @@ void Renderer::init(score::gfx::RenderList& renderer)
     int m_rotationCount = 0;
     void Renderer::update(score::gfx::RenderList& renderer, QRhiResourceUpdateBatch& res)
     {
+      auto& rhi = *renderer.state.rhi;
         auto& n = static_cast<const Node&>(this->node);
         {
             // Set up a basic camera
@@ -277,8 +262,7 @@ void Renderer::init(score::gfx::RenderList& renderer)
             particlesUploaded = true;
         }
 
-        res.uploadStaticBuffer(particleControls, 0, sizeof(float), &n.particlesSpeedMod);
-        res.uploadStaticBuffer(particleControls, sizeof(float), sizeof(int), &n.particlesNumber);
+        res.updateDynamicBuffer(particleControls, 0, sizeof(float), &n.particlesSpeedMod);
 
         instances = n.particlesNumber;
 
@@ -287,6 +271,47 @@ void Renderer::init(score::gfx::RenderList& renderer)
         {
             res.uploadTexture(m_texture, n.m_image);
             m_uploaded = true;
+        }
+
+        // Load or reload the mesh data into the GPU
+        if(m_currentMeshPath != n.meshName)
+        {
+          m_currentMeshPath = n.meshName;
+
+          // Reload the mesh data
+          myData = getmesh(m_currentMeshPath);
+          mesh = myData.values;
+
+          m_mesh.setMesh(mesh, myData);
+
+          delete m_meshBuffer;
+          delete m_idxBuffer;
+          m_meshBuffer = nullptr;
+          m_idxBuffer = nullptr;
+
+          // Create new buffers
+          if(!mesh.empty())
+          {
+            m_meshBuffer = rhi.newBuffer(
+                QRhiBuffer::Immutable,
+                QRhiBuffer::VertexBuffer,
+                m_mesh.vertexArray.size() * sizeof(float));
+            m_meshBuffer->setName("RenderList::mesh_buf");
+            m_meshBuffer->create();
+
+            res.uploadStaticBuffer(m_meshBuffer, 0, m_meshBuffer->size(), m_mesh.vertexArray.data());
+
+            if (!m_mesh.indexArray.empty())
+            {
+              m_idxBuffer = rhi.newBuffer(
+                  QRhiBuffer::Immutable,
+                  QRhiBuffer::IndexBuffer,
+                  m_mesh.indexArray.size() * sizeof(unsigned int));
+              m_idxBuffer->setName("RenderList::idx_buf");
+              m_idxBuffer->create();
+              res.uploadStaticBuffer(m_idxBuffer, 0, m_idxBuffer->size(), m_mesh.indexArray.data());
+            }
+          }
         }
     }
 
@@ -312,12 +337,10 @@ void Renderer::init(score::gfx::RenderList& renderer)
                 QRhiCommandBuffer& cb,
                 score::gfx::Edge& edge)
     {
-        auto& n = static_cast<const Node&>(this->node);
-        //auto mesh = n.mesh;
-        const TexturedMeshForParticles mesh(n.meshName);
-        /*n.mesh.myData = newmesh.myData;
-        n.mesh.mesh = newmesh.mesh;
-        auto& mesh = n.mesh;*/
+        // Don't render when there's no data to avoid crashes
+        if(!m_meshBuffer || m_mesh.vertexCount == 0)
+          return;
+
         auto it = ossia::find_if(m_p, [ptr=&edge] (const auto& p){ return p.first == ptr; });
         SCORE_ASSERT(it != m_p.end());
         {
@@ -326,26 +349,22 @@ void Renderer::init(score::gfx::RenderList& renderer)
             cb.setShaderResources(it->second.srb);
             cb.setViewport(QRhiViewport(0, 0, sz.width(), sz.height()));
 
-            assert(this->m_meshBuffer);
-            assert(this->m_meshBuffer->usage().testFlag(QRhiBuffer::VertexBuffer));
+            SCORE_ASSERT(this->m_meshBuffer);
+            SCORE_ASSERT(this->m_meshBuffer->usage().testFlag(QRhiBuffer::VertexBuffer));
 
             const QRhiCommandBuffer::VertexInput bindings[]
                     = {
                 {this->m_meshBuffer, 0},
-                {this->m_meshBuffer, mesh.vertexCount*sizeof(float)},
-                {this->m_particleOffsets, 0},
-                {this->m_particleSpeeds, 0},
-                {this->m_particleControls, 0}
+                {this->m_meshBuffer, m_mesh.vertexCount*sizeof(float)},
+                {this->m_particleOffsets, 0}
             };
 
-            cb.setVertexInput(0, 5, bindings, this->m_idxBuffer, 0, QRhiCommandBuffer::IndexFormat::IndexUInt32);
-
-            mesh.setupBindings(*this->m_meshBuffer, this->m_idxBuffer, cb);
+            cb.setVertexInput(0, 3, bindings, this->m_idxBuffer, 0, QRhiCommandBuffer::IndexFormat::IndexUInt32);
 
             if(this->m_idxBuffer)
-                cb.drawIndexed(mesh.indexCount, instances, 0, mesh.indexCount * 3 * sizeof(float));
+                cb.drawIndexed(m_mesh.indexCount, instances, 0, m_mesh.indexCount * 3 * sizeof(float));
             else
-                cb.draw(mesh.vertexCount, instances, 0, mesh.indexCount * 3 * sizeof(float));
+                cb.draw(m_mesh.vertexCount, instances, 0, 0);
         }
     }
 

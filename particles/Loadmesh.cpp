@@ -8,7 +8,7 @@ meshdata attrib_to_data(tinyobj::ObjReader reader, std::string inputfile, tinyob
       if (!reader.Error().empty()) {
           std::cerr << "TinyObjReader: " << reader.Error();
       }
-      exit(1);
+      abort();
     }
 
     if (!reader.Warning().empty()) {
@@ -99,7 +99,7 @@ meshdata attrib_to_data(tinyobj::ObjReader reader, std::string inputfile, tinyob
 
 meshdata getmesh(std::string meshName)
 {
-    std::string inputfile = "ponte.obj";//meshName;
+    std::string inputfile = meshName;
     tinyobj::ObjReaderConfig reader_config;
     reader_config.mtl_search_path = "./"; // Path to material files
 
@@ -109,7 +109,7 @@ meshdata getmesh(std::string meshName)
         if (!reader.Error().empty()) {
             std::cerr << "TinyObjReader: " << reader.Error();
         }
-        exit(1);
+        abort();
     }
 
     if (!reader.Warning().empty()) {

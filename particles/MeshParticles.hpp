@@ -14,25 +14,20 @@ namespace particles
 /** Here we define a mesh fairly manually and in a fairly suboptimal way
  * (based on this: https://pastebin.com/DXKEmvap)
  */
-struct TexturedMeshForParticles final : score::gfx::Mesh
+struct TexturedMeshForParticles
 {
-    // Generate our mesh data
-    meshdata myData;
-    std::vector<float> mesh;
+    TexturedMeshForParticles();
 
-    TexturedMeshForParticles(std::string meshName);
-    // Utility singleton
-    static TexturedMeshForParticles& instance(std::string meshName) noexcept;
+    void setMesh(std::vector<float>& mesh, meshdata& myData);
 
-    // Ignore this function
-    const char* defaultVertexShader() const noexcept override;
+    ossia::small_vector<QRhiVertexInputBinding, 2> vertexInputBindings;
+    ossia::small_vector<QRhiVertexInputAttribute, 2> vertexAttributeBindings;
 
-    // This function is called when running the draw calls,
-    // it tells the pipeline which buffers are going to be bound
-    // to each attribute defined above
-    void setupBindings(
-            QRhiBuffer& vtxData,
-            QRhiBuffer* idxData,
-            QRhiCommandBuffer& cb) const noexcept override;
+    gsl::span<const float> vertexArray;
+    gsl::span<const unsigned int> indexArray;
+    int vertexCount{};
+    int indexCount{};
+
+    std::size_t vertexFloatCount{};
 };
 }

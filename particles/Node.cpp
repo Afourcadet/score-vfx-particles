@@ -66,7 +66,7 @@ Node::Node()
     // This texture is provided by score
     m_image = QImage(":/ossia-score.png");
     particlesSpeedMod = 0.f;
-  
+
     std::cout << "new_debug";
 
     // Load ubo address in m_materialData
@@ -108,6 +108,7 @@ void Node::process(const score::gfx::Message& msg)
         // Speed of particles
         {
           particlesSpeedMod = 0.01*ossia::convert<float>(*val);
+
           mustRerender = true;
         }
         break;
@@ -124,10 +125,7 @@ void Node::process(const score::gfx::Message& msg)
     case 2:
         // Name of the mesh
         {
-            //meshName = ossia::convert<std::string>(*val);
-            /*TexturedMeshForParticles newmesh(meshName);
-            mesh->myData = newmesh.myData;
-            mesh->mesh = newmesh.mesh;*/
+            meshName = ossia::convert<std::string>(*val);
             mustRerender = true;
         }
         break;
