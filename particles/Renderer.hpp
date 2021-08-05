@@ -7,7 +7,7 @@ namespace particles
 const int maxparticles = 200;
 struct Controls
 {
-    float speedMod;
+  float speedMod{};
 };
 
 class Renderer : public score::gfx::GenericNodeRenderer
@@ -18,6 +18,12 @@ public:
     QRhiBuffer* m_particleOffsets{};
     QRhiBuffer* m_particleSpeeds{};
     QRhiBuffer* m_particleControls{};
+    std::string m_currentMeshPath;
+    TexturedMeshForParticles m_mesh;
+
+    meshdata myData;
+    std::vector<float> mesh;
+
 
 private:
     ~Renderer();
@@ -30,7 +36,7 @@ private:
     // needed by the graphics card when issuing draw calls
     score::gfx::Pipeline buildPipeline(
             const score::gfx::RenderList& renderer,
-            const score::gfx::Mesh& mesh,
+            const TexturedMeshForParticles& mesh,
             const QShader& vertexS,
             const QShader& fragmentS,
             const score::gfx::TextureRenderTarget& rt,

@@ -2,11 +2,8 @@
 
 namespace particles
 {
-TexturedMeshForParticles::TexturedMeshForParticles(std::string meshName)
+TexturedMeshForParticles::TexturedMeshForParticles()
 {
-    myData = getmesh("ponte.obj");
-    mesh = myData.values;
-
     vertexInputBindings.push_back({3 * sizeof(float), QRhiVertexInputBinding::PerVertex});
     vertexAttributeBindings.push_back(
                 {0, 0, QRhiVertexInputAttribute::Float3, 0});
@@ -21,29 +18,13 @@ TexturedMeshForParticles::TexturedMeshForParticles(std::string meshName)
     vertexInputBindings.push_back({4 * sizeof(float), QRhiVertexInputBinding::PerInstance});
     vertexAttributeBindings.push_back(
                 {2, 2, QRhiVertexInputAttribute::Float4, 0});
-
-    vertexArray = mesh;
-    vertexCount = myData.vertices_length / 3;
 }
 
-TexturedMeshForParticles& TexturedMeshForParticles::instance(std::string meshName) noexcept
+void TexturedMeshForParticles::setMesh(std::vector<float>& mesh, meshdata& myData)
 {
-    static TexturedMeshForParticles newmesh(meshName);
-    return newmesh;
+  vertexArray = mesh;
+  vertexFloatCount = myData.vertices_length;
+  vertexCount = myData.vertices_length / 3;
 }
 
-const char* TexturedMeshForParticles::defaultVertexShader() const noexcept { return ""; }
-
-void TexturedMeshForParticles::setupBindings(
-        QRhiBuffer& vtxData,
-        QRhiBuffer* idxData,
-        QRhiCommandBuffer& cb) const noexcept
-{
-    const QRhiCommandBuffer::VertexInput bindings[] = {
-        {&vtxData, 0},                      // vertex starts at offset zero
-        {&vtxData, myData.vertices_length * sizeof(float)} // texcoord starts after all the vertices
-    };
-
-    cb.setVertexInput(0, 2, bindings);
-}
 }

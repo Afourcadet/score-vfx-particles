@@ -20,7 +20,6 @@ score_addon_particles::factories(
   return instantiate_factories<
       score::ApplicationContext,
       FW<Process::ProcessModelFactory, particles::ProcessFactory>,
-      FW<Process::LayerFactory, particles::LayerFactory>,
       FW<Execution::ProcessComponentFactory,
          particles::ProcessExecutorComponentFactory>>(ctx, key);
 }
