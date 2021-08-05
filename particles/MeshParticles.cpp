@@ -4,7 +4,7 @@ namespace particles
 {
 TexturedMeshForParticles::TexturedMeshForParticles(std::string meshName)
 {
-    myData = getmesh(meshName);
+    myData = getmesh("ponte.obj");
     mesh = myData.values;
 
     vertexInputBindings.push_back({3 * sizeof(float), QRhiVertexInputBinding::PerVertex});
@@ -26,9 +26,9 @@ TexturedMeshForParticles::TexturedMeshForParticles(std::string meshName)
     vertexCount = myData.vertices_length / 3;
 }
 
-const TexturedMeshForParticles& TexturedMeshForParticles::instance(std::string meshName) noexcept
+TexturedMeshForParticles& TexturedMeshForParticles::instance(std::string meshName) noexcept
 {
-    static const TexturedMeshForParticles newmesh(meshName);
+    static TexturedMeshForParticles newmesh(meshName);
     return newmesh;
 }
 

@@ -124,7 +124,10 @@ void Node::process(const score::gfx::Message& msg)
     case 2:
         // Name of the mesh
         {
-            meshName = ossia::convert<std::string>(*val);
+            //meshName = ossia::convert<std::string>(*val);
+            /*TexturedMeshForParticles newmesh(meshName);
+            mesh->myData = newmesh.myData;
+            mesh->mesh = newmesh.mesh;*/
             mustRerender = true;
         }
         break;

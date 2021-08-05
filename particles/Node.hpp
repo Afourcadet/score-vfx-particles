@@ -1,5 +1,6 @@
 #pragma once
 #include <Gfx/Graph/Node.hpp>
+#include "MeshParticles.hpp"
 
 namespace particles
 {
@@ -15,7 +16,8 @@ public:
   void process(const score::gfx::Message& msg) override;
   float particlesSpeedMod = 1.f;
   int particlesNumber = 0;
-  std::string meshName = "ponte";
+  std::string meshName = "ponte.obj";
+  TexturedMeshForParticles* mesh;
   std::atomic_bool mustRerender{true};
 private:
   score::gfx::ModelCameraUBO ubo;
