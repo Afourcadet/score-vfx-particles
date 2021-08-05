@@ -34,7 +34,7 @@ namespace particles
         {
             auto meshnameinput = new Process::LineEdit{Id<Process::Port>(4), this};
             meshnameinput->setName(tr("Name of the mesh file"));
-            meshnameinput->setValue("lowpolysphere");
+            meshnameinput->setValue("ponte.obj");
             m_inlets.push_back(meshnameinput);
         }
         m_outlets.push_back(new Gfx::TextureOutlet{Id<Process::Port>(0), this});

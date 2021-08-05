@@ -76,7 +76,10 @@ void Renderer::init(score::gfx::RenderList& renderer)
     auto& rhi = *renderer.state.rhi;
 
     std::cout << "started init renderer\n";
-    const auto& mesh = TexturedMeshForParticles::instance(n.meshName);
+    const TexturedMeshForParticles mesh(n.meshName);
+    /*n.mesh.myData = newmesh.myData;
+    n.mesh.mesh = newmesh.mesh;
+    auto& mesh = n.mesh;*/
 
     particleOffsets = renderer.state.rhi->newBuffer(
                 QRhiBuffer::Immutable, QRhiBuffer::VertexBuffer | QRhiBuffer::StorageBuffer, maxparticles * 4 * sizeof(float));
@@ -310,7 +313,11 @@ void Renderer::init(score::gfx::RenderList& renderer)
                 score::gfx::Edge& edge)
     {
         auto& n = static_cast<const Node&>(this->node);
-        const auto& mesh = TexturedMeshForParticles::instance(n.meshName);
+        //auto mesh = n.mesh;
+        const TexturedMeshForParticles mesh(n.meshName);
+        /*n.mesh.myData = newmesh.myData;
+        n.mesh.mesh = newmesh.mesh;
+        auto& mesh = n.mesh;*/
         auto it = ossia::find_if(m_p, [ptr=&edge] (const auto& p){ return p.first == ptr; });
         SCORE_ASSERT(it != m_p.end());
         {

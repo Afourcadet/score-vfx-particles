@@ -17,12 +17,12 @@ namespace particles
 struct TexturedMeshForParticles final : score::gfx::Mesh
 {
     // Generate our mesh data
-    struct meshdata myData;
+    meshdata myData;
     std::vector<float> mesh;
 
     TexturedMeshForParticles(std::string meshName);
     // Utility singleton
-    static const TexturedMeshForParticles& instance(std::string meshName) noexcept;
+    static TexturedMeshForParticles& instance(std::string meshName) noexcept;
 
     // Ignore this function
     const char* defaultVertexShader() const noexcept override;

@@ -1,6 +1,5 @@
 #pragma once
 #include "Node.hpp"
-#include "MeshParticles.hpp"
 
 namespace particles
 {
