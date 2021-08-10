@@ -84,10 +84,14 @@ void Renderer::init(score::gfx::RenderList& renderer)
     particleControls = renderer.state.rhi->newBuffer(
                 QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(Controls));
     SCORE_ASSERT(particleControls->create());
+    particleIndexes = renderer.state.rhi->newBuffer(
+                QRhiBuffer::Immutable, QRhiBuffer::VertexBuffer | QRhiBuffer::StorageBuffer, maxparticles * sizeof(float));
+    SCORE_ASSERT(particleIndexes->create());
 
     m_particleOffsets = particleOffsets;
     m_particleSpeeds = particleSpeeds;
     m_particleControls = particleControls;
+    m_particleIndexes = particleIndexes;
 
                 // Initialize the Process UBO (provides timing information, etc.)
         {
@@ -168,15 +172,25 @@ void Renderer::init(score::gfx::RenderList& renderer)
     {
         float speedMod;
     } controls;
+    layout(std140, binding = 3) buffer Indexes
+    {
+        float i[];
+    } indexes;
     void main()
     {
         vec4 cs;
         uint index = gl_GlobalInvocationID.x;
         if (index < %1) {
+            if (indexes.i[index] > -1) {
+                float angle = 6.28318 * indexes.i[index];
+                pbuf.d[index].pos.xy = vec2(5*cos(angle), 5*sin(angle));
+                sbuf.d[index].spd.xy = controls.speedMod*vec2(pbuf.d[index].pos.y, -pbuf.d[index].pos.x);
+                indexes.i[index] = -1;
+            }
             vec4 p = pbuf.d[index].pos;
             vec4 s = sbuf.d[index].spd;
-            cs = vec4(-p.x*0.01, -p.y*0.01, -p.z*0.01, 0);
-            s += cs;
+            cs = vec4(-p.x*0.01, -p.y*0.015, -p.z*0.015, 0);
+            s += controls.speedMod*cs;
             vec4 ns = controls.speedMod*s;
             p += ns;
             pbuf.d[index].pos = p;
@@ -189,13 +203,14 @@ void Renderer::init(score::gfx::RenderList& renderer)
 
             auto csrb = rhi.newShaderResourceBindings();
             {
-                QRhiShaderResourceBinding bindings[3] = {
+                QRhiShaderResourceBinding bindings[4] = {
                     QRhiShaderResourceBinding::bufferLoadStore(0, QRhiShaderResourceBinding::ComputeStage, particleOffsets),
                     QRhiShaderResourceBinding::bufferLoadStore(1, QRhiShaderResourceBinding::ComputeStage, particleSpeeds),
-                    QRhiShaderResourceBinding::uniformBuffer(2, QRhiShaderResourceBinding::ComputeStage, particleControls)
+                    QRhiShaderResourceBinding::uniformBuffer(2, QRhiShaderResourceBinding::ComputeStage, particleControls),
+                    QRhiShaderResourceBinding::bufferLoadStore(3, QRhiShaderResourceBinding::ComputeStage, particleIndexes)
                 };
 
-                csrb->setBindings(bindings, bindings + 3);
+                csrb->setBindings(bindings, bindings + 4);
                 SCORE_ASSERT(csrb->build());
             }
             compute->setShaderResourceBindings(csrb);
@@ -218,7 +233,7 @@ void Renderer::init(score::gfx::RenderList& renderer)
 
             // Our object rotates in a very crude way
             QMatrix4x4 model;
-            model.scale(0.1);
+            model.scale(0.05);
             //model.rotate(m_rotationCount++, QVector3D(1, 1, 1));
 
             // The camera and viewports are fixed
@@ -248,17 +263,12 @@ void Renderer::init(score::gfx::RenderList& renderer)
                     m_processUBO, 0, sizeof(score::gfx::ProcessUBO), &this->node.standardUBO);
 
         if(!particlesUploaded) {
-            for(int i = 0; i < maxparticles * 4; i+=4) {
-                double angle = 2. * (i/4) * M_PI / (double)n.particlesNumber;
-                data[i] = 5*std::cos(angle);
-                data[i+1] = 5*std::sin(M_PI/4.)*std::sin(angle);
-                data[i+2] = 5*std::cos(M_PI/4.)*std::cos(angle);
-                speed[i] = data[i+1];
-                speed[i+1] = -data[i+2];
-                speed[i+2] = -data[i];
+            for(int i = 0; i < maxparticles; i++) {
+                indexes[i] = ((float)i)/(float)n.particlesNumber;
             }
             res.uploadStaticBuffer(particleSpeeds, 0, maxparticles * 4 * sizeof(float), speed.get());
             res.uploadStaticBuffer(particleOffsets, 0, maxparticles * 4 * sizeof(float), data.get());
+            res.uploadStaticBuffer(particleIndexes, 0, maxparticles * sizeof(float), indexes.get());
             particlesUploaded = true;
         }
 
@@ -379,6 +389,8 @@ void Renderer::init(score::gfx::RenderList& renderer)
         m_particleSpeeds = nullptr;
         m_particleControls->releaseAndDestroyLater();
         m_particleControls = nullptr;
+        m_particleIndexes->releaseAndDestroyLater();
+        m_particleIndexes = nullptr;
 
         // This will free all the other resources - material & process UBO, etc
         defaultRelease(r);
