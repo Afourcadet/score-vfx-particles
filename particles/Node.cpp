@@ -108,14 +108,13 @@ void Node::process(const score::gfx::Message& msg)
         // Speed of particles
         {
           particlesSpeedMod = 0.01*ossia::convert<float>(*val);
-
           mustRerender = true;
         }
         break;
       }
       case 1:
     {
-        // Sumber of particles
+        // Number of particles
         {
             particlesNumber = ossia::convert<int>(*val);
             mustRerender = true;

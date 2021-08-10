@@ -18,6 +18,7 @@ public:
     QRhiBuffer* m_particleOffsets{};
     QRhiBuffer* m_particleSpeeds{};
     QRhiBuffer* m_particleControls{};
+    QRhiBuffer* m_particleIndexes{};
     std::string m_currentMeshPath;
     TexturedMeshForParticles m_mesh;
 
@@ -44,10 +45,12 @@ private:
     QRhiBuffer* particleOffsets{};
     QRhiBuffer* particleSpeeds{};
     QRhiBuffer* particleControls{};
+    QRhiBuffer* particleIndexes{};
     bool particlesUploaded{};
     QRhiComputePipeline* compute{};
     QRhiTexture* m_texture{};
     bool m_uploaded = false;
+    std::unique_ptr<float []> indexes = std::make_unique<float[]>(maxparticles);
     std::unique_ptr<float []> data = std::make_unique<float[]>(maxparticles *4);
     std::unique_ptr<float []> speed = std::make_unique<float[]>(maxparticles *4);
     void init(score::gfx::RenderList& renderer) override;
