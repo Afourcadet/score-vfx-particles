@@ -84,15 +84,10 @@ void Renderer::init(score::gfx::RenderList& renderer)
     particleControls = renderer.state.rhi->newBuffer(
                 QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(Controls));
     SCORE_ASSERT(particleControls->create());
-    particleTypeControl = renderer.state.rhi->newBuffer(
-                QRhiBuffer::Immutable, QRhiBuffer::VertexBuffer | QRhiBuffer::StorageBuffer, sizeof(int));
-    SCORE_ASSERT(particleTypeControl->create());
 
     m_particleOffsets = particleOffsets;
     m_particleSpeeds = particleSpeeds;
     m_particleControls = particleControls;
-    m_particleTypeControl = particleTypeControl;
-
                 // Initialize the Process UBO (provides timing information, etc.)
         {
             processUBOInit(renderer);
@@ -318,7 +313,6 @@ void Renderer::init(score::gfx::RenderList& renderer)
         if(!particlesUploaded) {
             res.uploadStaticBuffer(particleSpeeds, 0, maxparticles * 4 * sizeof(float), speed.get());
             res.uploadStaticBuffer(particleOffsets, 0, maxparticles * 4 * sizeof(float), data.get());
-            res.uploadStaticBuffer(particleTypeControl, 0, sizeof(int), &particleType);
             particlesUploaded = true;
         }
         Controls ctrl{n.particlesSpeedMod, n.particlesNumber, n.particleType};
@@ -441,8 +435,6 @@ void Renderer::init(score::gfx::RenderList& renderer)
         m_particleSpeeds = nullptr;
         m_particleControls->releaseAndDestroyLater();
         m_particleControls = nullptr;
-        m_particleTypeControl->releaseAndDestroyLater();
-        m_particleTypeControl = nullptr;
 
         // This will free all the other resources - material & process UBO, etc
         defaultRelease(r);

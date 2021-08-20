@@ -20,7 +20,6 @@ public:
     QRhiBuffer* m_particleOffsets{};
     QRhiBuffer* m_particleSpeeds{};
     QRhiBuffer* m_particleControls{};
-    QRhiBuffer* m_particleTypeControl{};
     std::string m_currentMeshPath;
     TexturedMeshForParticles m_mesh;
 
@@ -47,7 +46,6 @@ private:
     QRhiBuffer* particleOffsets{};
     QRhiBuffer* particleSpeeds{};
     QRhiBuffer* particleControls{};
-    QRhiBuffer* particleTypeControl{};
     bool particlesUploaded{};
     QRhiComputePipeline* compute{};
     QRhiTexture* m_texture{};
