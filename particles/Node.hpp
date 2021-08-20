@@ -17,6 +17,7 @@ public:
   float particlesSpeedMod = 1.f;
   int particlesNumber = 0;
   std::string meshName;
+  int particleType = 0;
   std::atomic_bool mustRerender{true};
 private:
   score::gfx::ModelCameraUBO ubo;

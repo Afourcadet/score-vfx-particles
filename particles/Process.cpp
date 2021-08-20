@@ -34,8 +34,15 @@ namespace particles
         {
             auto meshnameinput = new Process::LineEdit{Id<Process::Port>(4), this};
             meshnameinput->setName(tr("Name of the mesh file"));
-            meshnameinput->setValue("/home/jcelerier/projets/oss/structuresynth-code/Misc/sphere.obj");
+            meshnameinput->setValue("lowpolysphere.obj");
             m_inlets.push_back(meshnameinput);
+        }
+        {
+            auto typeParticles = new Process::IntSlider{Id<Process::Port>(5), this};
+            typeParticles->setName(tr("Type of particles display"));
+            typeParticles->setValue(0);
+            typeParticles->setDomain(ossia::make_domain(0,1));
+            m_inlets.push_back(typeParticles);
         }
         m_outlets.push_back(new Gfx::TextureOutlet{Id<Process::Port>(0), this});
     }
