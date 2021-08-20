@@ -84,14 +84,14 @@ void Renderer::init(score::gfx::RenderList& renderer)
     particleControls = renderer.state.rhi->newBuffer(
                 QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(Controls));
     SCORE_ASSERT(particleControls->create());
-    particleIndexes = renderer.state.rhi->newBuffer(
-                QRhiBuffer::Immutable, QRhiBuffer::VertexBuffer | QRhiBuffer::StorageBuffer, maxparticles * sizeof(float));
-    SCORE_ASSERT(particleIndexes->create());
+    particleTypeControl = renderer.state.rhi->newBuffer(
+                QRhiBuffer::Immutable, QRhiBuffer::VertexBuffer | QRhiBuffer::StorageBuffer, sizeof(int));
+    SCORE_ASSERT(particleTypeControl->create());
 
     m_particleOffsets = particleOffsets;
     m_particleSpeeds = particleSpeeds;
     m_particleControls = particleControls;
-    m_particleIndexes = particleIndexes;
+    m_particleTypeControl = particleTypeControl;
 
                 // Initialize the Process UBO (provides timing information, etc.)
         {
@@ -171,28 +171,81 @@ void Renderer::init(score::gfx::RenderList& renderer)
     layout(std140, binding = 2) uniform Controls
     {
         float speedMod;
+        int nbPart;
+        int t;
     } controls;
-    layout(std140, binding = 3) buffer Indexes
-    {
-        float i[];
-    } indexes;
+    layout(std140, binding = 3) uniform process_t {
+        float time;
+        float timeDelta;
+        float progress;
+
+        int passIndex;
+        int frameIndex;
+
+        vec4 date;
+        vec4 mouse;
+        vec4 channelTime;
+
+        float sampleRate;
+    } p_t;
+    float rand(vec2 co){
+        return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+    }
     void main()
     {
         vec4 cs;
         uint index = gl_GlobalInvocationID.x;
-        if (index < %1) {
-            if (indexes.i[index] > -1) {
-                float angle = 6.28318 * indexes.i[index];
-                pbuf.d[index].pos.xy = vec2(5*cos(angle), 5*sin(angle));
-                sbuf.d[index].spd.xy = controls.speedMod*vec2(pbuf.d[index].pos.y, -pbuf.d[index].pos.x);
-                indexes.i[index] = -1;
+        uint maxIndex = %1;
+        if (index < maxIndex) {
+            if (sbuf.d[index].spd.a > -1) {
+                if(controls.t == 0) {
+                    float angle = 6.28318 * float(index)/float(controls.nbPart);
+                    pbuf.d[index].pos.xy = vec2(5*cos(angle), 5*sin(angle));
+                    sbuf.d[index].spd.xy = controls.speedMod*vec2(pbuf.d[index].pos.y, -pbuf.d[index].pos.x);
+                }
+                if(controls.t == 1) {
+                    vec2 p = pbuf.d[index].pos.xy;
+                    vec2 s = sbuf.d[index].spd.xy;
+                    p.x = 70*(0.5-rand(vec2(index, 0)));
+                    p.y = 40*(0.5-rand(vec2(index, p_t.time)));
+                    s.x = 0.1*(0.5-rand(vec2(p_t.time, index)));
+                    s.y = 0.1*(0.5-rand(vec2(0, index)));
+                    pbuf.d[index].pos.xy = p;
+                    sbuf.d[index].spd.xy = s;
+                }
+                sbuf.d[index].spd.a = -1;
             }
             vec4 p = pbuf.d[index].pos;
             vec4 s = sbuf.d[index].spd;
-            cs = vec4(-p.x*0.01, -p.y*0.015, -p.z*0.015, 0);
+            if (controls.t == 0) {
+                cs = vec4(-p.x*0.01, -p.y*0.015, -p.z*0.015, 0);
+            }
+            if (controls.t == 1) {
+                cs = vec4(0,0,0,0);
+                for (int i=0;i<controls.nbPart && i!=index;i++) {
+                    vec2 A = pbuf.d[index].pos.xy;
+                    vec2 B = pbuf.d[i].pos.xy;
+                    cs.xy += vec2(0.01*(B.x-A.x)/pow((A.x-B.x)*(A.x-B.x) + (A.y-B.y)*(A.y-B.y),1.5), 0.01*(B.y-A.y)/pow((A.x-B.x)*(A.x-B.x) + (A.y-B.y)*(A.y-B.y), 1.5));
+                }
+                cs.xy -= 0.01*(s.x*s.x + s.y*s.y)*s.xy;
+            }
             s += controls.speedMod*cs;
             vec4 ns = controls.speedMod*s;
             p += ns;
+            if (controls.t == 1) {
+                if (p.x < -35) {
+                    p.x += 70;
+                }
+                if (p.x > 35) {
+                    p.x -= 70;
+                }
+                if (p.y < -20) {
+                    p.y += 40;
+                }
+                if (p.y > 20) {
+                    p.y -= 40;
+                }
+            }
             pbuf.d[index].pos = p;
             sbuf.d[index].spd = s;
         }
@@ -207,7 +260,7 @@ void Renderer::init(score::gfx::RenderList& renderer)
                     QRhiShaderResourceBinding::bufferLoadStore(0, QRhiShaderResourceBinding::ComputeStage, particleOffsets),
                     QRhiShaderResourceBinding::bufferLoadStore(1, QRhiShaderResourceBinding::ComputeStage, particleSpeeds),
                     QRhiShaderResourceBinding::uniformBuffer(2, QRhiShaderResourceBinding::ComputeStage, particleControls),
-                    QRhiShaderResourceBinding::bufferLoadStore(3, QRhiShaderResourceBinding::ComputeStage, particleIndexes)
+                    QRhiShaderResourceBinding::uniformBuffer(3, QRhiShaderResourceBinding::ComputeStage, m_processUBO)
                 };
 
                 csrb->setBindings(bindings, bindings + 4);
@@ -263,16 +316,15 @@ void Renderer::init(score::gfx::RenderList& renderer)
                     m_processUBO, 0, sizeof(score::gfx::ProcessUBO), &this->node.standardUBO);
 
         if(!particlesUploaded) {
-            for(int i = 0; i < maxparticles; i++) {
-                indexes[i] = ((float)i)/(float)n.particlesNumber;
-            }
             res.uploadStaticBuffer(particleSpeeds, 0, maxparticles * 4 * sizeof(float), speed.get());
             res.uploadStaticBuffer(particleOffsets, 0, maxparticles * 4 * sizeof(float), data.get());
-            res.uploadStaticBuffer(particleIndexes, 0, maxparticles * sizeof(float), indexes.get());
+            res.uploadStaticBuffer(particleTypeControl, 0, sizeof(int), &particleType);
             particlesUploaded = true;
         }
-
-        res.updateDynamicBuffer(particleControls, 0, sizeof(float), &n.particlesSpeedMod);
+        Controls ctrl{n.particlesSpeedMod, n.particlesNumber, n.particleType};
+        res.updateDynamicBuffer(particleControls, 0, sizeof(Controls), &ctrl);
+        //res.updateDynamicBuffer(particleControls, 0, sizeof(float), &n.particlesSpeedMod);
+        //res.updateDynamicBuffer(particleControls, sizeof(float), sizeof(float)+sizeof(int), &n.particlesNumber);
 
         instances = n.particlesNumber;
 
@@ -389,8 +441,8 @@ void Renderer::init(score::gfx::RenderList& renderer)
         m_particleSpeeds = nullptr;
         m_particleControls->releaseAndDestroyLater();
         m_particleControls = nullptr;
-        m_particleIndexes->releaseAndDestroyLater();
-        m_particleIndexes = nullptr;
+        m_particleTypeControl->releaseAndDestroyLater();
+        m_particleTypeControl = nullptr;
 
         // This will free all the other resources - material & process UBO, etc
         defaultRelease(r);

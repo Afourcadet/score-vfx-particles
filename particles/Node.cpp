@@ -94,44 +94,55 @@ Node::~Node()
 
 void Node::process(const score::gfx::Message& msg)
 {
-  ProcessNode::process(msg.token);
+    ProcessNode::process(msg.token);
 
-  int32_t p = 0;
-  for (const score::gfx::gfx_input& m: msg.input)
-  {
-    if(auto val = std::get_if<ossia::value>(&m))
+    int32_t p = 0;
+    for (const score::gfx::gfx_input& m: msg.input)
     {
-    switch(p)
-    {
-      case 0:
-      {
-        // Speed of particles
+        if(auto val = std::get_if<ossia::value>(&m))
         {
-          particlesSpeedMod = 0.01*ossia::convert<float>(*val);
-          mustRerender = true;
+            switch(p)
+            {
+            case 0:
+            {
+                // Speed of particles
+                {
+                    particlesSpeedMod = 0.01*ossia::convert<float>(*val);
+                    mustRerender = true;
+                }
+                break;
+            }
+            case 1:
+            {
+                // Number of particles
+                {
+                    particlesNumber = ossia::convert<int>(*val);
+                    mustRerender = true;
+                }
+                break;
+            }
+            case 2:
+            {
+                // Name of the mesh
+                {
+                    meshName = ossia::convert<std::string>(*val);
+                    mustRerender = true;
+                }
+                break;
+            }
+            case 3:
+            {
+                // Type of the particles behaviour
+                {
+                    particleType = ossia::convert<int>(*val);
+                    mustRerender = true;
+                }
+                break;
+            }
+            }
         }
-        break;
-      }
-      case 1:
-    {
-        // Number of particles
-        {
-            particlesNumber = ossia::convert<int>(*val);
-            mustRerender = true;
-        }
-        break;
+        p++;
     }
-    case 2:
-        // Name of the mesh
-        {
-            meshName = ossia::convert<std::string>(*val);
-            mustRerender = true;
-        }
-        break;
-    }
-    }
-    p++;
-  }
 }
 
 #include <Gfx/Qt5CompatPop> // clang-format: keep

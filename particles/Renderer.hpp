@@ -8,6 +8,8 @@ const int maxparticles = 200;
 struct Controls
 {
   float speedMod{};
+  int nbrParticles{};
+  int particleType{};
 };
 
 class Renderer : public score::gfx::GenericNodeRenderer
@@ -18,7 +20,7 @@ public:
     QRhiBuffer* m_particleOffsets{};
     QRhiBuffer* m_particleSpeeds{};
     QRhiBuffer* m_particleControls{};
-    QRhiBuffer* m_particleIndexes{};
+    QRhiBuffer* m_particleTypeControl{};
     std::string m_currentMeshPath;
     TexturedMeshForParticles m_mesh;
 
@@ -45,12 +47,12 @@ private:
     QRhiBuffer* particleOffsets{};
     QRhiBuffer* particleSpeeds{};
     QRhiBuffer* particleControls{};
-    QRhiBuffer* particleIndexes{};
+    QRhiBuffer* particleTypeControl{};
     bool particlesUploaded{};
     QRhiComputePipeline* compute{};
     QRhiTexture* m_texture{};
     bool m_uploaded = false;
-    std::unique_ptr<float []> indexes = std::make_unique<float[]>(maxparticles);
+    int particleType = 0;
     std::unique_ptr<float []> data = std::make_unique<float[]>(maxparticles *4);
     std::unique_ptr<float []> speed = std::make_unique<float[]>(maxparticles *4);
     void init(score::gfx::RenderList& renderer) override;
